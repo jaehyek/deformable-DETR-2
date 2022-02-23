@@ -25,13 +25,14 @@ class CocoDetection(VisionDataset):
 
     def __init__(self, root, annFile, transform=None, target_transform=None, transforms=None,
                  cache_mode=False, local_rank=0, local_size=1):
+                # transform=>None, target_transform=>None, transforms=>None
         super(CocoDetection, self).__init__(root, transforms, transform, target_transform)
         from pycocotools.coco import COCO
         self.coco = COCO(annFile)
         self.ids = list(sorted(self.coco.imgs.keys()))
-        self.cache_mode = cache_mode
-        self.local_rank = local_rank
-        self.local_size = local_size
+        self.cache_mode = cache_mode        # => False
+        self.local_rank = local_rank        # => 0
+        self.local_size = local_size        # => 1
         if cache_mode:
             self.cache = {}
             self.cache_images()
@@ -71,7 +72,7 @@ class CocoDetection(VisionDataset):
         if self.transforms is not None:
             img, target = self.transforms(img, target)
 
-        return img, target
+        return img, target      # return PIL image, annotation
 
     def __len__(self):
         return len(self.ids)

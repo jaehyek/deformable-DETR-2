@@ -9,13 +9,13 @@ class DeformableTransformerEncoderLayer(nn.Module):
         super().__init__()
         """
         Args:
-            - C: Number of expected features in the encoder inputs.
-            - M: number of attention heads.
-            - K: number of sampling points.
-            - n_levels: multiscale parameter.
-            - last_feat_height : smallest feature height.
-            - last_feat_width : smallest feature width.
-            - d_ffn : feed forward network dimension.
+            - C: Number of expected features in the encoder inputs.  => 256 
+            - M: number of attention heads.                          => 8 
+            - K: number of sampling points.                          => 4 
+            - n_levels: multiscale parameter.                        => 4 
+            - last_feat_height : smallest feature height.            => 16 
+            - last_feat_width : smallest feature width.              => 16
+            - d_ffn : feed forward network dimension.                => 1024
             
 
         """
@@ -25,8 +25,8 @@ class DeformableTransformerEncoderLayer(nn.Module):
         self.norm1 = nn.LayerNorm(C)
         self.norm2 = nn.LayerNorm(C)
         self.norm3 = nn.LayerNorm(C)
-        self.normalize_before = normalize_before
-        self.ffn = FeedForward(C, d_ffn, dropout)
+        self.normalize_before = normalize_before        # normalize_before => False
+        self.ffn = FeedForward(C, d_ffn, dropout)       # 아래 class 하나 생성.   d_ffn ==> 1024
         
     def forward(self, input_features, ref_points, input_masks = None, padding_masks= None, pos_encodings = None):
         """
@@ -96,8 +96,8 @@ class DeformableTransformerEncoder(nn.Module):
         """
         super().__init__()
         self.layers = nn.ModuleList([copy.deepcopy(encoder_layer) for i in range(num_layers)])
-        self.num_layers = num_layers
-        self.norm = norm
+        self.num_layers = num_layers        # => 3
+        self.norm = norm                    # => None
 
     def forward(self, input_features, ref_points, input_masks=None, pos_encodings=None, padding_mask=None):
         output = input_features

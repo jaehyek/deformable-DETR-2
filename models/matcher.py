@@ -29,9 +29,9 @@ class HungarianMatcher(nn.Module):
             cost_giou: This is the relative weight of the giou loss of the bounding box in the matching cost
         """
         super().__init__()
-        self.cost_class = cost_class
-        self.cost_bbox = cost_bbox
-        self.cost_giou = cost_giou
+        self.cost_class = cost_class    # => 2
+        self.cost_bbox = cost_bbox      # => 5
+        self.cost_giou = cost_giou      # => 2
         assert cost_class != 0 or cost_bbox != 0 or cost_giou != 0, "all costs cant be 0"
 
     def forward(self, outputs, targets):

@@ -36,12 +36,12 @@ class DeformableHeadAttention(nn.Module):
     def __init__(self,last_height,last_width, C, M=8, K=4, L = 1, dropout=0.1, return_attentions = False):
         """
         Args:
-            - param C: emebedding size of the x's
-            - param M: number of attention heads
-            - param K: number of sampling points per attention head per feature level
-            - param L: number of scale
-            - param last_height: smallest feature height
-            - param last_width: smallest feature width
+            - param C: emebedding size of the x's => 256
+            - param M: number of attention heads  => 8
+            - param K: number of sampling points per attention head per feature level => 4
+            - param L: number of scale  => 4
+            - param last_height: smallest feature height => 16
+            - param last_width: smallest feature width   => 16
             - param dropout: dropout ratio default =0.1,
             - param return_attentions: boolean, return attentions or not default = False
         """
@@ -54,14 +54,15 @@ class DeformableHeadAttention(nn.Module):
         self.q_proj = nn.Linear(C, C)
         self.W_prim = nn.Linear(C, C)
         self.dimensions = [[ last_height * 2**i , last_width * 2**i] for i in range(self.L)]
+                    # self.dimensions => [[16, 16], [32, 32], [64, 64], [128, 128]]
         self.dropout = None
         if dropout > 0:
             self.dropout = nn.Dropout(p=dropout)
         # 2MLK for offsets MLK for A_mlqk
-        self.delta_proj = nn.Linear(C, 2 * M * L * K) # delta p_q 2 *L* M * K
-        self.Attention_projection = nn.Linear(C, M*K*L) # K probabilities per M and L
+        self.delta_proj = nn.Linear(C, 2 * M * L * K) # delta p_q 2 *L* M * K  ==>  (256,256)
+        self.Attention_projection = nn.Linear(C, M*K*L) # K probabilities per M and L  ==> ( 256, 128)
 
-        self.W_m = nn.Linear(C, C)
+        self.W_m = nn.Linear(C, C)   # => ( 256, 256)
         self.return_attentions = True
         self.init_parameters()
     def forward(self,z_q,Xs,p_q ,query_mask = None,x_masks = None):

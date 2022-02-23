@@ -8,11 +8,11 @@ class DeformableTransformerDecoderLayer(nn.Module):
         super().__init__()
         """
         Args:
-            - C: Number of expected features in the decoder inputs.
-            - d_ffn : feed forward network dimension.
-            - n_levels: multiscale parameter.
-            - M: number of attention heads.
-            - K: number of sampling points.
+            - C: Number of expected features in the decoder inputs. => 256
+            - d_ffn : feed forward network dimension.               => 1024
+            - n_levels: multiscale parameter.                       => 4
+            - M: number of attention heads.                         => 8
+            - K: number of sampling points.                         => 4
         """
         # Deformable Attention part
         self.def_attn = DeformableHeadAttention(last_height = last_feat_height,last_width = last_feat_width, C = C, M=M, K=K, L = n_levels, dropout=dropout, return_attentions = False) 
@@ -23,7 +23,7 @@ class DeformableTransformerDecoderLayer(nn.Module):
         # Proper Attention Part
         self.self_attn = nn.MultiheadAttention(C, M, dropout=dropout)
         self.dropout2 = nn.Dropout(dropout)
-        self.normalize_before = normalize_before
+        self.normalize_before = normalize_before        # normalize_before => False
         # the feed forward network
         self.ffn = FeedForward(C, d_ffn)
         
@@ -113,9 +113,9 @@ class DeformableTransformerDecoder(nn.Module):
             - norm: the layer normalization component (optional).
         """
         super().__init__()
-        self.layers = nn.ModuleList([copy.deepcopy(decoder_layer) for i in range(num_layers)])
+        self.layers = nn.ModuleList([copy.deepcopy(decoder_layer) for i in range(num_layers)])      # num_layers => 3
         self.num_layers = num_layers
-        self.return_intermediate = return_intermediate
+        self.return_intermediate = return_intermediate      # => True
         self.norm = norm
         
     def forward(self, query_objects, out_encoder, ref_point, tgt_mask = None, memory_masks = None,

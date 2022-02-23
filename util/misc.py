@@ -17,11 +17,26 @@ import torch.nn as nn
 import torch.distributed as dist
 from torch import Tensor
 
+
+
+class _NewEmptyTensorOp(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, x, new_shape):
+        ctx.shape = x.shape
+        return x.new_empty(new_shape)
+
+    @staticmethod
+    def backward(ctx, grad):
+        shape = ctx.shape
+        return _NewEmptyTensorOp.apply(grad, shape), None
+
+
+
 # needed due to empty tensor bug in pytorch and torchvision 0.5
 import torchvision
 if float(torchvision.__version__[:3]) < 0.5:
     import math
-    from torchvision.ops.misc import _NewEmptyTensorOp
+    # from torchvision.ops.misc import _NewEmptyTensorOp
     def _check_size_scale_factor(dim, size, scale_factor):
         # type: (int, Optional[List[int]], Optional[float]) -> None
         if size is None and scale_factor is None:

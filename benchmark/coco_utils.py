@@ -9,7 +9,7 @@ import torchvision
 from pycocotools import mask as coco_mask
 from pycocotools.coco import COCO
 
-import transforms as T
+from benchmark import transforms as T
 
 
 class FilterAndRemapCocoCategories(object):
@@ -223,8 +223,8 @@ class CocoDetection(torchvision.datasets.CocoDetection):
 def get_coco(root, image_set, transforms, mode='instances'):
     anno_file_template = "{}_{}2017.json"
     PATHS = {
-        "train": (f"/tempory/coco/images/train2017/", f"/users/Etu9/3801679/deformable-DETR/Dataset/coco_light/coco_light_train_ids.json"),
-        "val": (f"/tempory/coco/images/val2017/",f"/users/Etu9/3801679/deformable-DETR/Dataset/coco_light/coco_light_validation_ids.json" ),
+        "train": (r"D:\proj_dataset\coco\train2017/", f"./Dataset/coco_light/coco_light_train_ids.json"),
+        "val": (r"D:\proj_dataset\coco\val2017/",f"./Dataset/coco_light/coco_light_validation_ids.json" ),
     }
 
     t = [ConvertCocoPolysToMask()]

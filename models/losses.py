@@ -74,11 +74,11 @@ class SetCriterion(nn.Module):
             focal_alpha: alpha in Focal Loss
         """
         super().__init__()
-        self.num_classes = num_classes
+        self.num_classes = num_classes  # => 6
         self.matcher = matcher
         self.weight_dict = weight_dict
         self.losses = losses
-        self.focal_alpha = focal_alpha
+        self.focal_alpha = focal_alpha  # 0.25
 
     def loss_labels(self, outputs, targets, indices, num_boxes, log=True):
         """Classification loss (NLL)

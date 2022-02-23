@@ -12,22 +12,26 @@ from pycocotools import mask as coco_mask
 from util.misc import get_local_rank, get_local_size
 import datasets.transforms as T
 from .torchvision_datasets import CocoDetection as TvCocoDetection
+from benchmark.coco_utils import convert_coco_poly_to_mask
 
 class CocoDetection(TvCocoDetection):
     def __init__(self, img_folder, ann_file, transforms, return_masks, cache_mode=False, local_rank=0, local_size=1):
-        super(CocoDetection, self).__init__(img_folder, ann_file,
-                                            cache_mode=cache_mode, local_rank=local_rank, local_size=local_size)
+        super(CocoDetection, self).__init__(img_folder, ann_file, cache_mode=cache_mode, local_rank=local_rank, local_size=local_size)
+                            # cache_mode:False, local_rank:0, local_size:1
         self._transforms = transforms
-        self.prepare = ConvertCocoPolysToMask(return_masks)
+        self.prepare = ConvertCocoPolysToMask(return_masks)     # return_masks => False
 
     def __getitem__(self, idx):
-        img, target = super(CocoDetection, self).__getitem__(idx)
+        img, target = super(CocoDetection, self).__getitem__(idx)       # img:PIL image, target:annotation
+            # img : PIL
+            # target: annotation
         image_id = self.ids[idx]
         target = {'image_id': image_id, 'annotations': target}
-        img, target = self.prepare(img, target)
+        img, target = self.prepare(img, target)         # img:PIL image,  target:항목의 값이 전부 tensor인 dict type 형태.
         if self._transforms is not None:
-            img, target = self._transforms(img, target)
+            img, target = self._transforms(img, target)     # img PIL => img Tensor [3, 773, 768].
         return img, target
+
 class ConvertCocoPolysToMask(object):
     def __init__(self, return_masks=False):
         self.return_masks = return_masks
@@ -40,12 +44,12 @@ class ConvertCocoPolysToMask(object):
 
         anno = target["annotations"]
 
-        anno = [obj for obj in anno if 'iscrowd' not in obj or obj['iscrowd'] == 0]
+        anno = [obj for obj in anno if 'iscrowd' not in obj or obj['iscrowd'] == 0]     # 원하는 class가 1개 있는 경우만.
 
         boxes = [obj["bbox"] for obj in anno]
         # guard against no boxes via resizing
         boxes = torch.as_tensor(boxes, dtype=torch.float32).reshape(-1, 4)
-        boxes[:, 2:] += boxes[:, :2]
+        boxes[:, 2:] += boxes[:, :2]            # x,y,w,h --> x1, y1, x2, y2
         boxes[:, 0::2].clamp_(min=0, max=w)
         boxes[:, 1::2].clamp_(min=0, max=h)
 
@@ -64,7 +68,7 @@ class ConvertCocoPolysToMask(object):
             if num_keypoints:
                 keypoints = keypoints.view(num_keypoints, -1, 3)
 
-        keep = (boxes[:, 3] > boxes[:, 1]) & (boxes[:, 2] > boxes[:, 0])
+        keep = (boxes[:, 3] > boxes[:, 1]) & (boxes[:, 2] > boxes[:, 0])            # keep: tensor([True, True]) -> 정상적인 box인 경우 True.
         boxes = boxes[keep]
         classes = classes[keep]
         if self.return_masks:
@@ -90,7 +94,7 @@ class ConvertCocoPolysToMask(object):
         target["orig_size"] = torch.as_tensor([int(h), int(w)])
         target["size"] = torch.as_tensor([int(h), int(w)])
 
-        return image, target
+        return image, target        # target의 item들을 전부 tensor형태로 변환.
 
 def make_coco_transforms(image_set):
 
@@ -125,8 +129,8 @@ def make_coco_transforms(image_set):
 
 def build(image_set, args):
     PATHS = {
-        "train": (f"/tempory/coco/images/train2017/", f"datasets/coco_light/coco_light_train.json"),
-        "val": (f"/tempory/coco/images/val2017/",f"datasets/coco_light/coco_light_validation.json" ),
+        "train": (r"D:\proj_dataset\coco\train2017/", f"datasets/coco_light/coco_light_train.json"),
+        "val": (r"D:\proj_dataset\coco\val2017/",f"datasets/coco_light/coco_light_validation.json" ),
     }
     img_folder, ann_file = PATHS[image_set]
     dataset = CocoDetection(img_folder, ann_file, transforms=make_coco_transforms(image_set), return_masks=False,local_rank=get_local_rank(), local_size=get_local_size())

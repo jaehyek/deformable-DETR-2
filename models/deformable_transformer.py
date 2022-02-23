@@ -35,22 +35,21 @@ class DeformableTransformer(nn.Module):
         encoder_layer = DeformableTransformerEncoderLayer(C=d_model, M=nhead, K=k, n_levels=scales, last_feat_height=last_height, 
                                                           last_feat_width=last_width,d_ffn=dim_feedforward,dropout=dropout, 
                                                           normalize_before=normalize_before)
-        encoder_norm = nn.LayerNorm(d_model) if normalize_before else None
-        self.encoder = DeformableTransformerEncoder(encoder_layer, num_encoder_layers, encoder_norm)
+        encoder_norm = nn.LayerNorm(d_model) if normalize_before else None          # normalize_before => False, encoder_norm => None
+        self.encoder = DeformableTransformerEncoder(encoder_layer, num_encoder_layers, encoder_norm)    # num_encoder_layers => 3
 
         decoder_layer = DeformableTransformerDecoderLayer(C=d_model, M=nhead, K=k, n_levels=scales, last_feat_height=last_height,
                                                           last_feat_width=last_width,d_ffn=dim_feedforward, dropout=dropout,
                                                         normalize_before=normalize_before)
         
-        decoder_norm = nn.LayerNorm(d_model)
-        self.decoder = DeformableTransformerDecoder(decoder_layer, num_decoder_layers, decoder_norm,
-                                          return_intermediate=return_intermediate_dec)
+        decoder_norm = nn.LayerNorm(d_model)            # d_model => 512
+        self.decoder = DeformableTransformerDecoder(decoder_layer, num_decoder_layers, decoder_norm, return_intermediate=return_intermediate_dec)
 
         self._reset_parameters()
 
-        self.d_model = d_model
+        self.d_model = d_model      # d_model => 256
         self.C = d_model
-        self.nhead = nhead
+        self.nhead = nhead          # nhead => 8
 
         self.query_ref_point_proj = nn.Linear(d_model, 2)
 
@@ -79,8 +78,8 @@ class DeformableTransformer(nn.Module):
         ref_points = []
         for tensor in src:
             _, height, width, _ = tensor.shape
-            ref_point = generate_ref_points(width=width,
-                                            height=height)
+            ref_point = generate_ref_points(width=width, height=height)
+
             ref_point = ref_point.type_as(src[0])
             # H, W, 2 -> B, H, W, 2
             ref_point = ref_point.unsqueeze(0).repeat(bs, 1, 1, 1)

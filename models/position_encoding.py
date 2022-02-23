@@ -54,8 +54,8 @@ class PositionEmbeddingLearned(nn.Module):
     """
     def __init__(self, num_pos_feats=256):
         super().__init__()
-        self.row_embed = nn.Embedding(50, num_pos_feats)
-        self.col_embed = nn.Embedding(50, num_pos_feats)
+        self.row_embed = nn.Embedding(150, num_pos_feats)    # num_pos_feats : 128
+        self.col_embed = nn.Embedding(150, num_pos_feats)
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -63,16 +63,20 @@ class PositionEmbeddingLearned(nn.Module):
         nn.init.uniform_(self.col_embed.weight)
 
     def forward(self, tensor_list: NestedTensor):
-        x = tensor_list.tensors
+        x = tensor_list.tensors     # tensor_list = [ mask, tensors]
+            # x.shape = [1(batchsize), 512, 97, 96]
+            # tensor_list.tensors은 backbone에 의해서 작아진 image의 크기로 들어 온다. 즉 1/8이 들어 온다.
         h, w = x.shape[-2:]
-        i = torch.arange(w, device=x.device)
-        j = torch.arange(h, device=x.device)
-        x_emb = self.col_embed(i)
-        y_emb = self.row_embed(j)
+        i = torch.arange(w, device=x.device)        # i = [ 0, 1, 2, ..., 95]
+        j = torch.arange(h, device=x.device)        # j = [ 0, 1, 2, ..., 131]
+
+        # 아래는 이미지 크기(tensor_list.tensor)에 해당하는 x축, y축 embedding을 만들어  합치고(cat)하고, batchsize만큼  복사한 tensor을 return한다.
+        x_emb = self.col_embed(i)       # -> ( 96, 128) 여기에서 error가 난다면, 위의 embedding생성에서  class의 개수를 늘려 보자.
+        y_emb = self.row_embed(j)       # -> ( 97, 128)
         pos = torch.cat([
-            x_emb.unsqueeze(0).repeat(h, 1, 1),
-            y_emb.unsqueeze(1).repeat(1, w, 1),
-        ], dim=-1).permute(2, 0, 1).unsqueeze(0).repeat(x.shape[0], 1, 1, 1)
+            x_emb.unsqueeze(0).repeat(h, 1, 1), # (96,128) -> ( 1, 96,128) -> ( 97, 96, 128)
+            y_emb.unsqueeze(1).repeat(1, w, 1), # (97,128) -> (97, 1, 128) -> (97,96, 128)
+        ], dim=-1).permute(2, 0, 1).unsqueeze(0).repeat(x.shape[0], 1, 1, 1) #  -> [97, 96, 256] -> [ 256, 97,96] -> [1,256, 97,96] -> [1(batchsize),256, 97,96]
         return pos
 
 

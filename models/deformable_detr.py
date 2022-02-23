@@ -28,24 +28,24 @@ class DeformableDETR(nn.Module):
         """
         super().__init__()
         self.transformer = transformer # The deformable transformer
-        self.num_queries = num_queries # Number of objects to predict in parallel 
-        self.query_embed = nn.Embedding(num_queries, self.transformer.C)
+        self.num_queries = num_queries # Number of objects to predict in parallel => 300
+        self.query_embed = nn.Embedding(num_queries, self.transformer.C)    # (300, 256)
        
         #  for class prediction
-        self.class_pred = nn.Linear(transformer.C, num_classes) 
+        self.class_pred = nn.Linear(transformer.C, num_classes)     # ( 256, 6)
         prior_prob = 0.01
-        bias_value = -math.log((1 - prior_prob) / prior_prob)
+        bias_value = -math.log((1 - prior_prob) / prior_prob)       # => -4.595
         self.class_pred.bias.data = torch.ones(num_classes) * bias_value
-        num_pred = self.transformer.decoder.num_layers
+        num_pred = self.transformer.decoder.num_layers      # => 3
         #self.class_pred = nn.ModuleList([self.class_pred for _ in range(num_pred)])
         # for boxes prediction
-        self.bbox_pred = MLP(transformer.C, transformer.C, 4, 3) 
+        self.bbox_pred = MLP(transformer.C, transformer.C, 4, 3)        # => ( 256,256,4,3)
         #self.bbox_pred = nn.ModuleList([self.bbox_pred for _ in range(num_pred)])
         # Multi scale feature map
-        self.num_feature_levels = num_feature_levels 
+        self.num_feature_levels = num_feature_levels        # => 4
         self.backbone = backbone
-        self.aux_loss = aux_loss
-        if num_feature_levels > 1:
+        self.aux_loss = aux_loss        # True
+        if num_feature_levels > 1:      # => 4
             self.input_proj = self.get_projections()
         else:
             self.input_proj = nn.ModuleList([
@@ -58,19 +58,26 @@ class DeformableDETR(nn.Module):
 
     def get_projections(self):
         input_projections = []
-        for _ in range(len(self.backbone.strides)):
-            in_channels = self.backbone.num_channels[_]
+        for _ in range(len(self.backbone.strides)):     # => [8, 16, 32]
+            in_channels = self.backbone.num_channels[_]     # => 512
             input_projections.append(nn.Sequential(
-                nn.Conv2d(in_channels, self.transformer.C, kernel_size=1),
+                nn.Conv2d(in_channels, self.transformer.C, kernel_size=1),      # self.transformer.C = 256
                 nn.GroupNorm(32, self.transformer.C),
             ))
-        for _ in range(self.num_feature_levels - len(self.backbone.strides)):
+        for _ in range(self.num_feature_levels - len(self.backbone.strides)):       # self.num_feature_levels => 4
             input_projections.append(nn.Sequential(
                 nn.Conv2d(in_channels, self.transformer.C, kernel_size=3, stride=2, padding=1),
                 nn.GroupNorm(32, self.transformer.C),
             ))
             in_channels = self.transformer.C
         return nn.ModuleList(input_projections)
+
+        # [Sequential((0): Conv2d(512, 256, kernel_size=(1, 1), stride=(1, 1)) (1): GroupNorm(32, 256, eps=1e-05, affine=True)),
+        #  Sequential((0): Conv2d(1024, 256, kernel_size=(1, 1), stride=(1, 1))(1): GroupNorm(32, 256, eps=1e-05, affine=True)),
+        #  Sequential((0): Conv2d(2048, 256, kernel_size=(1, 1), stride=(1, 1))(1): GroupNorm(32, 256, eps=1e-05, affine=True)),
+        #  Sequential((0): Conv2d(2048, 256, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))(1): GroupNorm(32, 256, eps=1e-05, affine=True))]
+        #  Batch Norm : H,W,C을 그대로 두고, N batch size으로 normalize한다.
+        #  Group Norm : N은 두고,  H,W,C을  그룹으로 묶고, normalize한다.  => batch size가 작을 때, 사용한다.
 
     def forward(self, samples):
         """
@@ -157,9 +164,12 @@ class MLP(nn.Module):
 
     def __init__(self, input_dim, hidden_dim, output_dim, num_layers):
         super().__init__()
-        self.num_layers = num_layers
-        h = [hidden_dim] * (num_layers - 1)
+        self.num_layers = num_layers        # input_dim=>256, hidden_dim=> 256, output_dim=>4, num_layers=>3
+        h = [hidden_dim] * (num_layers - 1) # h =>  [256,256]
         self.layers = nn.ModuleList(nn.Linear(n, k) for n, k in zip([input_dim] + h, h + [output_dim]))
+        # Linear(in_features=256, out_features=256, bias=True)
+        # Linear(in_features=256, out_features=256, bias=True)
+        # Linear(in_features=256, out_features=4, bias=True)
 
     def forward(self, x):
         for i, layer in enumerate(self.layers):
@@ -194,16 +204,25 @@ def build(args):
         num_feature_levels=args.num_feature_levels,
         aux_loss=args.aux_loss,
     )
-    matcher = build_matcher(args)
+    matcher = build_matcher(args)       # Cost compute
     weight_dict = {'loss_ce': args.cls_loss_coef, 'loss_bbox': args.bbox_loss_coef}
     weight_dict['loss_giou'] = args.giou_loss_coef
+    # loss_ce:2, loss_bbox:5, loss_giou : 2
+
     if args.aux_loss:
         aux_weight_dict = {}
-        for i in range(args.dec_layers - 1):
+        for i in range(args.dec_layers - 1):    # args.dec_layers => 3
             aux_weight_dict.update({k + f'_{i}': v for k, v in weight_dict.items()})
         aux_weight_dict.update({k + f'_enc': v for k, v in weight_dict.items()})
         weight_dict.update(aux_weight_dict)
-    losses = ['labels', 'boxes', 'cardinality']
+
+    # weight_dict
+    # {'loss_ce': 2, 'loss_bbox': 5, 'loss_giou': 2,
+    #  'loss_ce_0': 2, 'loss_bbox_0': 5, 'loss_giou_0': 2,
+    #  'loss_ce_1': 2, 'loss_bbox_1': 5, 'loss_giou_1': 2,
+    #  'loss_ce_enc': 2, 'loss_bbox_enc': 5, 'loss_giou_enc': 2}
+
+    losses = ['labels', 'boxes', 'cardinality']         # cardinality: 중복도 상대적 개념,  이름은 cardinality 가 낮지만, 민증은 cardinality가 높다.
     criterion = SetCriterion(num_classes, matcher, weight_dict, losses, focal_alpha=args.focal_alpha)
     criterion.to(device)
     postprocessors = {'bbox': PostProcess()}
